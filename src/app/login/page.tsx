@@ -10,10 +10,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { FileText, Loader2 } from 'lucide-react'
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('')
+  const [loginId, setLoginId] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [loginType, setLoginType] = useState<'staff' | 'admin'>('staff')
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
 
@@ -22,13 +23,20 @@ export default function LoginPage() {
     setLoading(true)
     setError(null)
 
+    // スタッフの場合はスタッフコードをメールアドレス形式に変換
+    const email = loginType === 'staff'
+      ? `${loginId}@staff.internal`
+      : loginId
+
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
 
     if (error) {
-      setError('メールアドレスまたはパスワードが正しくありません')
+      setError(loginType === 'staff'
+        ? 'スタッフコードまたはパスワードが正しくありません'
+        : 'メールアドレスまたはパスワードが正しくありません')
       setLoading(false)
       return
     }
@@ -50,15 +58,43 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {/* ログインタイプ切り替え */}
+          <div className="flex mb-6 bg-muted rounded-lg p-1">
+            <button
+              type="button"
+              onClick={() => setLoginType('staff')}
+              className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
+                loginType === 'staff'
+                  ? 'bg-white text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              スタッフ
+            </button>
+            <button
+              type="button"
+              onClick={() => setLoginType('admin')}
+              className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
+                loginType === 'admin'
+                  ? 'bg-white text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              管理者
+            </button>
+          </div>
+
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">メールアドレス</Label>
+              <Label htmlFor="loginId">
+                {loginType === 'staff' ? 'スタッフコード' : 'メールアドレス'}
+              </Label>
               <Input
-                id="email"
-                type="email"
-                placeholder="example@company.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="loginId"
+                type={loginType === 'staff' ? 'text' : 'email'}
+                placeholder={loginType === 'staff' ? '例: 150' : 'example@company.com'}
+                value={loginId}
+                onChange={(e) => setLoginId(e.target.value)}
                 required
               />
             </div>
