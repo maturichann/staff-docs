@@ -151,8 +151,11 @@ export function canViewDocument(
   // 管理者は全て見れる
   if (userRoleLevel >= ROLE_LEVELS.admin) return true
 
-  // 権限レベルチェック
+  // ドキュメント自体の権限レベルチェック
   if (userRoleLevel < doc.min_role_level) return false
+
+  // フォルダの権限レベルチェック（フォルダがある場合）
+  if (doc.folder && userRoleLevel < doc.folder.min_role_level) return false
 
   // 鍵マークの書類は本人には見せない
   if (doc.is_locked && doc.staff_id === userId) return false
@@ -162,4 +165,25 @@ export function canViewDocument(
 
   // スタッフは自分の書類のみ
   return doc.staff_id === userId
+}
+
+// フォルダの閲覧権限チェック
+export function canViewFolder(
+  userRoleLevel: number,
+  folder: Folder | FolderTreeNode
+): boolean {
+  return userRoleLevel >= folder.min_role_level
+}
+
+// フォルダツリーを権限でフィルタ
+export function filterFoldersByPermission(
+  folders: FolderTreeNode[],
+  userRoleLevel: number
+): FolderTreeNode[] {
+  return folders
+    .filter(folder => canViewFolder(userRoleLevel, folder))
+    .map(folder => ({
+      ...folder,
+      children: filterFoldersByPermission(folder.children, userRoleLevel)
+    }))
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { FolderTreeNode } from '@/lib/types'
+import { FolderTreeNode, ROLE_LEVELS } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -56,6 +56,16 @@ export function FileUploadV2({ staffList, folders, uploaderId }: FileUploadV2Pro
 
   // 「その他」フォルダのIDを取得
   const unassignedFolder = folders.find(f => f.system_type === 'unassigned')
+
+  // フォルダIDからフォルダを検索（ネスト対応）
+  const findFolderById = (folders: FolderTreeNode[], id: string): FolderTreeNode | null => {
+    for (const folder of folders) {
+      if (folder.id === id) return folder
+      const found = findFolderById(folder.children, id)
+      if (found) return found
+    }
+    return null
+  }
 
   const extractStaffName = (fileName: string): { name: string; staffId: string | null } => {
     const match = fileName.match(/^([^_]+)_/)
@@ -183,6 +193,10 @@ export function FileUploadV2({ staffList, folders, uploaderId }: FileUploadV2Pro
           }
         }
 
+        // フォルダの権限レベルを継承（フォルダがない場合はスタッフレベル）
+        const targetFolder = folderId ? findFolderById(folders, folderId) : null
+        const minRoleLevel = targetFolder?.min_role_level ?? ROLE_LEVELS.staff
+
         const { error: dbError } = await supabase.from('documents').insert({
           file_name: item.file.name,
           file_path: filePath,
@@ -193,6 +207,7 @@ export function FileUploadV2({ staffList, folders, uploaderId }: FileUploadV2Pro
           mime_type: item.file.type || 'application/octet-stream',
           uploaded_by: uploaderId,
           source: 'admin',
+          min_role_level: minRoleLevel,
         })
 
         if (dbError) throw dbError

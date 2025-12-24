@@ -34,10 +34,13 @@ export default async function DashboardPage() {
     .select('*')
     .order('name')
 
-  // ドキュメント一覧を取得
+  // ドキュメント一覧を取得（フォルダ情報も含める）
   const { data: documents } = await supabase
     .from('documents')
-    .select('*')
+    .select(`
+      *,
+      folder:folders(*)
+    `)
     .order('created_at', { ascending: false })
 
   // フォルダをツリー構造に変換

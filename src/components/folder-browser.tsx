@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Document, FolderTreeNode, ROLE_LEVELS, canViewDocument } from '@/lib/types'
+import { Document, FolderTreeNode, ROLE_LEVELS, canViewDocument, filterFoldersByPermission } from '@/lib/types'
 import { FolderTree } from './folder-tree'
 import { DocumentListV2 } from './document-list-v2'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -37,6 +37,12 @@ export function FolderBrowser({
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
 
+  // 権限でフィルタしたフォルダ
+  const filteredFolders = useMemo(
+    () => filterFoldersByPermission(folders, userRoleLevel),
+    [folders, userRoleLevel]
+  )
+
   // 選択中のフォルダを取得
   const findFolder = (folders: FolderTreeNode[], id: string): FolderTreeNode | null => {
     for (const folder of folders) {
@@ -47,7 +53,7 @@ export function FolderBrowser({
     return null
   }
 
-  const selectedFolder = selectedFolderId ? findFolder(folders, selectedFolderId) : null
+  const selectedFolder = selectedFolderId ? findFolder(filteredFolders, selectedFolderId) : null
 
   // パンくずリストを構築
   const buildBreadcrumbs = (
@@ -65,7 +71,7 @@ export function FolderBrowser({
     return null
   }
 
-  const breadcrumbs = selectedFolderId ? buildBreadcrumbs(folders, selectedFolderId) : null
+  const breadcrumbs = selectedFolderId ? buildBreadcrumbs(filteredFolders, selectedFolderId) : null
 
   // フィルタされたドキュメント
   const filteredDocuments = useMemo(() => {
@@ -110,7 +116,7 @@ export function FolderBrowser({
           </CardHeader>
           <CardContent className="py-0 pb-4">
             <FolderTree
-              folders={folders}
+              folders={filteredFolders}
               selectedFolderId={selectedFolderId}
               onSelectFolder={setSelectedFolderId}
               userRoleLevel={userRoleLevel}
