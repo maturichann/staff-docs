@@ -277,166 +277,207 @@ export function DocumentListV2({
     )
   }
 
+  // 行コンポーネントをレンダリング
+  const renderRow = (doc: Document) => (
+    <>
+      <TableCell>
+        <div className="flex items-center gap-2">
+          <FileText className="h-4 w-4 text-muted-foreground" />
+          <span className="font-medium truncate max-w-[200px]">{doc.file_name}</span>
+          {doc.is_locked && (
+            <span title="本人非表示">
+              <Lock className="h-3 w-3 text-red-500" />
+            </span>
+          )}
+          {getRoleLevelBadge(doc.min_role_level)}
+          {doc.source === 'staff' && (
+            <Badge variant="outline" className="text-xs">提出</Badge>
+          )}
+        </div>
+      </TableCell>
+      <TableCell>
+        {isAdmin ? (
+          <button
+            onClick={() => handleEdit(doc)}
+            className="inline-flex items-center gap-1 hover:opacity-70 transition-opacity"
+          >
+            <Badge variant="outline">{doc.staff_name}</Badge>
+            <Pencil className="h-3 w-3 text-muted-foreground" />
+          </button>
+        ) : (
+          <Badge variant="outline">{doc.staff_name}</Badge>
+        )}
+      </TableCell>
+      <TableCell className="text-muted-foreground">
+        {formatFileSize(doc.file_size)}
+      </TableCell>
+      <TableCell className="text-muted-foreground">
+        {formatDate(doc.created_at)}
+      </TableCell>
+      <TableCell className="text-right">
+        <div className="flex items-center justify-end gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleDownload(doc)}
+            disabled={downloading === doc.id}
+          >
+            {downloading === doc.id ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+          </Button>
+
+          {isAdmin && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleEdit(doc)}>
+                  <Pencil className="h-4 w-4 mr-2" />
+                  スタッフ名編集
+                </DropdownMenuItem>
+
+                <DropdownMenuItem onClick={() => handleToggleLock(doc)}>
+                  {doc.is_locked ? (
+                    <>
+                      <Unlock className="h-4 w-4 mr-2" />
+                      本人に表示
+                    </>
+                  ) : (
+                    <>
+                      <EyeOff className="h-4 w-4 mr-2" />
+                      本人非表示（鍵）
+                    </>
+                  )}
+                </DropdownMenuItem>
+
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <FolderInput className="h-4 w-4 mr-2" />
+                    フォルダ移動
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuItem onClick={() => handleMoveToFolder(doc, null)}>
+                      <FolderOpen className="h-4 w-4 mr-2" />
+                      ルート（フォルダなし）
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    {flatFolders.map(({ folder, depth }) => (
+                      <DropdownMenuItem
+                        key={folder.id}
+                        onClick={() => handleMoveToFolder(doc, folder.id)}
+                        style={{ paddingLeft: `${depth * 12 + 8}px` }}
+                      >
+                        <FolderOpen className="h-4 w-4 mr-2" />
+                        {folder.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <Shield className="h-4 w-4 mr-2" />
+                    閲覧権限
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuItem onClick={() => handleChangeRoleLevel(doc, ROLE_LEVELS.staff)}>
+                      <Eye className="h-4 w-4 mr-2" />
+                      全員
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleChangeRoleLevel(doc, ROLE_LEVELS.mg)}>
+                      <Eye className="h-4 w-4 mr-2" />
+                      MG以上
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleChangeRoleLevel(doc, ROLE_LEVELS.admin)}>
+                      <Lock className="h-4 w-4 mr-2" />
+                      管理者のみ
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+
+                <DropdownMenuSeparator />
+
+                <DropdownMenuItem
+                  onClick={() => handleDelete(doc)}
+                  className="text-red-600"
+                  disabled={deleting === doc.id}
+                >
+                  {deleting === doc.id ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4 mr-2" />
+                  )}
+                  削除
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+      </TableCell>
+    </>
+  )
+
+  const ROW_HEIGHT = 56
+
   return (
     <>
       <Card>
+        {/* ヘッダー（固定） */}
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>ファイル名</TableHead>
-              <TableHead>スタッフ</TableHead>
-              <TableHead>サイズ</TableHead>
-              <TableHead>アップロード日</TableHead>
-              <TableHead className="text-right">操作</TableHead>
+              <TableHead className="w-[35%]">ファイル名</TableHead>
+              <TableHead className="w-[15%]">スタッフ</TableHead>
+              <TableHead className="w-[10%]">サイズ</TableHead>
+              <TableHead className="w-[15%]">アップロード日</TableHead>
+              <TableHead className="w-[25%] text-right">操作</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
-            {documents.map((doc) => (
-              <TableRow key={doc.id}>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">{doc.file_name}</span>
-                    {doc.is_locked && (
-                      <span title="本人非表示">
-                        <Lock className="h-3 w-3 text-red-500" />
-                      </span>
-                    )}
-                    {getRoleLevelBadge(doc.min_role_level)}
-                    {doc.source === 'staff' && (
-                      <Badge variant="outline" className="text-xs">提出</Badge>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  {isAdmin ? (
-                    <button
-                      onClick={() => handleEdit(doc)}
-                      className="inline-flex items-center gap-1 hover:opacity-70 transition-opacity"
-                    >
-                      <Badge variant="outline">{doc.staff_name}</Badge>
-                      <Pencil className="h-3 w-3 text-muted-foreground" />
-                    </button>
-                  ) : (
-                    <Badge variant="outline">{doc.staff_name}</Badge>
-                  )}
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {formatFileSize(doc.file_size)}
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {formatDate(doc.created_at)}
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDownload(doc)}
-                      disabled={downloading === doc.id}
-                    >
-                      {downloading === doc.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Download className="h-4 w-4" />
-                      )}
-                    </Button>
-
-                    {isAdmin && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleEdit(doc)}>
-                            <Pencil className="h-4 w-4 mr-2" />
-                            スタッフ名編集
-                          </DropdownMenuItem>
-
-                          <DropdownMenuItem onClick={() => handleToggleLock(doc)}>
-                            {doc.is_locked ? (
-                              <>
-                                <Unlock className="h-4 w-4 mr-2" />
-                                本人に表示
-                              </>
-                            ) : (
-                              <>
-                                <EyeOff className="h-4 w-4 mr-2" />
-                                本人非表示（鍵）
-                              </>
-                            )}
-                          </DropdownMenuItem>
-
-                          <DropdownMenuSub>
-                            <DropdownMenuSubTrigger>
-                              <FolderInput className="h-4 w-4 mr-2" />
-                              フォルダ移動
-                            </DropdownMenuSubTrigger>
-                            <DropdownMenuSubContent>
-                              <DropdownMenuItem onClick={() => handleMoveToFolder(doc, null)}>
-                                <FolderOpen className="h-4 w-4 mr-2" />
-                                ルート（フォルダなし）
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              {flatFolders.map(({ folder, depth }) => (
-                                <DropdownMenuItem
-                                  key={folder.id}
-                                  onClick={() => handleMoveToFolder(doc, folder.id)}
-                                  style={{ paddingLeft: `${depth * 12 + 8}px` }}
-                                >
-                                  <FolderOpen className="h-4 w-4 mr-2" />
-                                  {folder.name}
-                                </DropdownMenuItem>
-                              ))}
-                            </DropdownMenuSubContent>
-                          </DropdownMenuSub>
-
-                          <DropdownMenuSub>
-                            <DropdownMenuSubTrigger>
-                              <Shield className="h-4 w-4 mr-2" />
-                              閲覧権限
-                            </DropdownMenuSubTrigger>
-                            <DropdownMenuSubContent>
-                              <DropdownMenuItem onClick={() => handleChangeRoleLevel(doc, ROLE_LEVELS.staff)}>
-                                <Eye className="h-4 w-4 mr-2" />
-                                全員
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleChangeRoleLevel(doc, ROLE_LEVELS.mg)}>
-                                <Eye className="h-4 w-4 mr-2" />
-                                MG以上
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleChangeRoleLevel(doc, ROLE_LEVELS.admin)}>
-                                <Lock className="h-4 w-4 mr-2" />
-                                管理者のみ
-                              </DropdownMenuItem>
-                            </DropdownMenuSubContent>
-                          </DropdownMenuSub>
-
-                          <DropdownMenuSeparator />
-
-                          <DropdownMenuItem
-                            onClick={() => handleDelete(doc)}
-                            className="text-red-600"
-                            disabled={deleting === doc.id}
-                          >
-                            {deleting === doc.id ? (
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4 mr-2" />
-                            )}
-                            削除
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
         </Table>
+
+        {/* バーチャルスクロール領域 */}
+        <div
+          ref={parentRef}
+          className="overflow-auto"
+          style={{ maxHeight: 'calc(100vh - 300px)', minHeight: '400px' }}
+        >
+          <div
+            style={{
+              height: `${virtualizer.getTotalSize()}px`,
+              width: '100%',
+              position: 'relative',
+            }}
+          >
+            <Table>
+              <TableBody>
+                {virtualizer.getVirtualItems().map((virtualRow) => {
+                  const doc = documents[virtualRow.index]
+                  return (
+                    <TableRow
+                      key={doc.id}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: `${ROW_HEIGHT}px`,
+                        transform: `translateY(${virtualRow.start}px)`,
+                      }}
+                    >
+                      {renderRow(doc)}
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
       </Card>
 
       {/* スタッフ名編集ダイアログ */}
