@@ -14,11 +14,16 @@ export async function POST(request: Request) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role')
+    .select(`
+      *,
+      role:roles(*)
+    `)
     .eq('id', user.id)
     .single()
 
-  if (!profile || profile.role !== 'admin') {
+  const roleLevel = profile?.role?.level ?? 0
+
+  if (!profile || roleLevel < 100) {
     return NextResponse.json({ error: '管理者権限が必要です' }, { status: 403 })
   }
 

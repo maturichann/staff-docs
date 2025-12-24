@@ -14,6 +14,14 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -58,11 +66,13 @@ export function FolderTree({
     parentId: null,
   })
   const [newFolderName, setNewFolderName] = useState('')
+  const [newFolderRoleLevel, setNewFolderRoleLevel] = useState<number>(ROLE_LEVELS.staff)
   const [editDialog, setEditDialog] = useState<{ open: boolean; folder: Folder | null }>({
     open: false,
     folder: null,
   })
   const [editName, setEditName] = useState('')
+  const [editRoleLevel, setEditRoleLevel] = useState<number>(ROLE_LEVELS.staff)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
@@ -87,13 +97,14 @@ export function FolderTree({
       const { error } = await supabase.from('folders').insert({
         name: newFolderName.trim(),
         parent_id: newFolderDialog.parentId,
-        min_role_level: ROLE_LEVELS.staff,
+        min_role_level: newFolderRoleLevel,
       })
 
       if (error) throw error
 
       setNewFolderDialog({ open: false, parentId: null })
       setNewFolderName('')
+      setNewFolderRoleLevel(ROLE_LEVELS.staff)
       router.refresh()
     } catch (error) {
       console.error('Create folder error:', error)
@@ -110,13 +121,17 @@ export function FolderTree({
     try {
       const { error } = await supabase
         .from('folders')
-        .update({ name: editName.trim() })
+        .update({
+          name: editName.trim(),
+          min_role_level: editRoleLevel,
+        })
         .eq('id', editDialog.folder.id)
 
       if (error) throw error
 
       setEditDialog({ open: false, folder: null })
       setEditName('')
+      setEditRoleLevel(ROLE_LEVELS.staff)
       router.refresh()
     } catch (error) {
       console.error('Rename folder error:', error)
@@ -229,10 +244,11 @@ export function FolderTree({
                   onClick={() => {
                     setEditDialog({ open: true, folder })
                     setEditName(folder.name)
+                    setEditRoleLevel(folder.min_role_level)
                   }}
                 >
                   <Pencil className="h-4 w-4 mr-2" />
-                  名前変更
+                  編集
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
@@ -290,21 +306,47 @@ export function FolderTree({
       {/* 新規フォルダダイアログ */}
       <Dialog
         open={newFolderDialog.open}
-        onOpenChange={(open) => setNewFolderDialog({ open, parentId: null })}
+        onOpenChange={(open) => {
+          setNewFolderDialog({ open, parentId: null })
+          if (!open) {
+            setNewFolderName('')
+            setNewFolderRoleLevel(ROLE_LEVELS.staff)
+          }
+        }}
       >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>新規フォルダ作成</DialogTitle>
             <DialogDescription>
-              フォルダ名を入力してください
+              フォルダ名と閲覧権限を設定してください
             </DialogDescription>
           </DialogHeader>
-          <Input
-            value={newFolderName}
-            onChange={(e) => setNewFolderName(e.target.value)}
-            placeholder="フォルダ名"
-            onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
-          />
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>フォルダ名</Label>
+              <Input
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                placeholder="フォルダ名"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>閲覧権限</Label>
+              <Select
+                value={String(newFolderRoleLevel)}
+                onValueChange={(v) => setNewFolderRoleLevel(Number(v))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={String(ROLE_LEVELS.staff)}>全員（スタッフ以上）</SelectItem>
+                  <SelectItem value={String(ROLE_LEVELS.mg)}>MG以上</SelectItem>
+                  <SelectItem value={String(ROLE_LEVELS.admin)}>管理者のみ</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
           <DialogFooter>
             <Button
               variant="outline"
@@ -319,21 +361,50 @@ export function FolderTree({
         </DialogContent>
       </Dialog>
 
-      {/* 名前変更ダイアログ */}
+      {/* フォルダ編集ダイアログ */}
       <Dialog
         open={editDialog.open}
-        onOpenChange={(open) => setEditDialog({ open, folder: null })}
+        onOpenChange={(open) => {
+          setEditDialog({ open, folder: null })
+          if (!open) {
+            setEditName('')
+            setEditRoleLevel(ROLE_LEVELS.staff)
+          }
+        }}
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>フォルダ名を変更</DialogTitle>
+            <DialogTitle>フォルダを編集</DialogTitle>
+            <DialogDescription>
+              フォルダ名と閲覧権限を変更できます
+            </DialogDescription>
           </DialogHeader>
-          <Input
-            value={editName}
-            onChange={(e) => setEditName(e.target.value)}
-            placeholder="フォルダ名"
-            onKeyDown={(e) => e.key === 'Enter' && handleRenameFolder()}
-          />
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>フォルダ名</Label>
+              <Input
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="フォルダ名"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>閲覧権限</Label>
+              <Select
+                value={String(editRoleLevel)}
+                onValueChange={(v) => setEditRoleLevel(Number(v))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={String(ROLE_LEVELS.staff)}>全員（スタッフ以上）</SelectItem>
+                  <SelectItem value={String(ROLE_LEVELS.mg)}>MG以上</SelectItem>
+                  <SelectItem value={String(ROLE_LEVELS.admin)}>管理者のみ</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
           <DialogFooter>
             <Button
               variant="outline"

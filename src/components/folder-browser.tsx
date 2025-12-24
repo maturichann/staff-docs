@@ -14,7 +14,6 @@ import {
   ChevronRight,
   Home,
   Upload,
-  Settings,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -128,12 +127,6 @@ export function FolderBrowser({
                 <Button variant="outline" size="sm" className="w-full justify-start">
                   <Upload className="h-4 w-4 mr-2" />
                   アップロード
-                </Button>
-              </Link>
-              <Link href="/dashboard/settings">
-                <Button variant="outline" size="sm" className="w-full justify-start">
-                  <Settings className="h-4 w-4 mr-2" />
-                  フォルダ設定
                 </Button>
               </Link>
             </CardContent>
