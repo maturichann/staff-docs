@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { FileUpload } from '@/components/file-upload'
+import { FileUploadV2 } from '@/components/file-upload-v2'
+import { ROLE_LEVELS } from '@/lib/types'
 
 export default async function UploadPage() {
   const supabase = await createClient()
@@ -13,30 +14,57 @@ export default async function UploadPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('*')
+    .select(`
+      *,
+      role:roles(*)
+    `)
     .eq('id', user.id)
     .single()
 
-  if (!profile || profile.role !== 'admin') {
+  const roleLevel = profile?.role?.level ?? ROLE_LEVELS.staff
+
+  if (!profile || roleLevel < ROLE_LEVELS.admin) {
     redirect('/dashboard')
   }
 
-  // スタッフ一覧を取得（名前のマッチング確認用）
+  // スタッフ一覧を取得
   const { data: staffList } = await supabase
     .from('profiles')
     .select('id, name')
     .order('name')
+
+  // フォルダ一覧を取得
+  const { data: folders } = await supabase
+    .from('folders')
+    .select('*')
+    .order('name')
+
+  // フォルダをツリー構造に変換
+  const buildFolderTree = (folders: any[], parentId: string | null = null): any[] => {
+    return folders
+      .filter(f => f.parent_id === parentId)
+      .map(folder => ({
+        ...folder,
+        children: buildFolderTree(folders, folder.id),
+      }))
+  }
+
+  const folderTree = buildFolderTree(folders || [])
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">書類アップロード</h1>
         <p className="text-muted-foreground">
-          ファイル名の先頭にスタッフ名を付けてください（例: 山田太郎_給与明細_2025年1月.pdf）
+          ファイル名の先頭にスタッフ名を付けると自動で振り分けられます（例: 山田太郎_給与明細.pdf）
         </p>
       </div>
 
-      <FileUpload staffList={staffList || []} uploaderId={user.id} />
+      <FileUploadV2
+        staffList={staffList || []}
+        folders={folderTree}
+        uploaderId={user.id}
+      />
     </div>
   )
 }

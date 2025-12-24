@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { Profile } from '@/lib/types'
+import { Profile, ROLE_LEVELS } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
@@ -13,15 +13,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { FileText, LogOut, Users, Upload, FolderOpen } from 'lucide-react'
+import { FileText, LogOut, Users, Upload, FolderOpen, FileUp } from 'lucide-react'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 
 interface DashboardNavProps {
   profile: Profile
+  roleLevel: number
 }
 
-export function DashboardNav({ profile }: DashboardNavProps) {
+export function DashboardNav({ profile, roleLevel }: DashboardNavProps) {
   const router = useRouter()
   const supabase = createClient()
 
@@ -37,6 +38,21 @@ export function DashboardNav({ profile }: DashboardNavProps) {
     .join('')
     .toUpperCase()
     .slice(0, 2)
+
+  const isAdmin = roleLevel >= ROLE_LEVELS.admin
+  const isMG = roleLevel >= ROLE_LEVELS.mg
+
+  const getRoleLabel = () => {
+    if (isAdmin) return '管理者'
+    if (isMG) return 'マネージャー'
+    return 'スタッフ'
+  }
+
+  const getRoleBadgeVariant = () => {
+    if (isAdmin) return 'default'
+    if (isMG) return 'secondary'
+    return 'outline'
+  }
 
   return (
     <nav className="border-b bg-white">
@@ -55,21 +71,37 @@ export function DashboardNav({ profile }: DashboardNavProps) {
                   書類一覧
                 </Button>
               </Link>
-              {profile.role === 'admin' && (
-                <>
-                  <Link href="/dashboard/upload">
-                    <Button variant="ghost" size="sm">
-                      <Upload className="h-4 w-4 mr-2" />
-                      アップロード
-                    </Button>
-                  </Link>
-                  <Link href="/dashboard/staff">
-                    <Button variant="ghost" size="sm">
-                      <Users className="h-4 w-4 mr-2" />
-                      スタッフ管理
-                    </Button>
-                  </Link>
-                </>
+              {isAdmin && (
+                <Link href="/dashboard/upload">
+                  <Button variant="ghost" size="sm">
+                    <Upload className="h-4 w-4 mr-2" />
+                    アップロード
+                  </Button>
+                </Link>
+              )}
+              {!isAdmin && (
+                <Link href="/dashboard/submissions">
+                  <Button variant="ghost" size="sm">
+                    <FileUp className="h-4 w-4 mr-2" />
+                    提出書類
+                  </Button>
+                </Link>
+              )}
+              {isMG && (
+                <Link href="/dashboard/staff">
+                  <Button variant="ghost" size="sm">
+                    <Users className="h-4 w-4 mr-2" />
+                    スタッフ管理
+                  </Button>
+                </Link>
+              )}
+              {isAdmin && (
+                <Link href="/dashboard/requests">
+                  <Button variant="ghost" size="sm">
+                    <FileUp className="h-4 w-4 mr-2" />
+                    提出依頼
+                  </Button>
+                </Link>
               )}
             </div>
           </div>
@@ -91,8 +123,8 @@ export function DashboardNav({ profile }: DashboardNavProps) {
                   <p className="text-xs leading-none text-muted-foreground">
                     {profile.email}
                   </p>
-                  <Badge variant="secondary" className="w-fit mt-1">
-                    {profile.role === 'admin' ? '管理者' : 'スタッフ'}
+                  <Badge variant={getRoleBadgeVariant() as "default" | "secondary" | "outline"} className="w-fit mt-1">
+                    {getRoleLabel()}
                   </Badge>
                 </div>
               </DropdownMenuLabel>
@@ -104,21 +136,37 @@ export function DashboardNav({ profile }: DashboardNavProps) {
                     書類一覧
                   </Link>
                 </DropdownMenuItem>
-                {profile.role === 'admin' && (
-                  <>
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard/upload">
-                        <Upload className="h-4 w-4 mr-2" />
-                        アップロード
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard/staff">
-                        <Users className="h-4 w-4 mr-2" />
-                        スタッフ管理
-                      </Link>
-                    </DropdownMenuItem>
-                  </>
+                {isAdmin && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard/upload">
+                      <Upload className="h-4 w-4 mr-2" />
+                      アップロード
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                {!isAdmin && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard/submissions">
+                      <FileUp className="h-4 w-4 mr-2" />
+                      提出書類
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                {isMG && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard/staff">
+                      <Users className="h-4 w-4 mr-2" />
+                      スタッフ管理
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                {isAdmin && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard/requests">
+                      <FileUp className="h-4 w-4 mr-2" />
+                      提出依頼
+                    </Link>
+                  </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
               </div>

@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { DocumentList } from '@/components/document-list'
+import { ROLE_LEVELS } from '@/lib/types'
+import { FolderBrowser } from '@/components/folder-browser'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -13,7 +14,10 @@ export default async function DashboardPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('*')
+    .select(`
+      *,
+      role:roles(*)
+    `)
     .eq('id', user.id)
     .single()
 
@@ -21,32 +25,42 @@ export default async function DashboardPage() {
     redirect('/login')
   }
 
-  // 管理者は全書類、スタッフは自分の書類のみ
-  let query = supabase
+  const roleLevel = profile.role?.level ?? ROLE_LEVELS.staff
+  const isAdmin = roleLevel >= ROLE_LEVELS.admin
+
+  // フォルダ一覧を取得
+  const { data: folders } = await supabase
+    .from('folders')
+    .select('*')
+    .order('name')
+
+  // ドキュメント一覧を取得
+  const { data: documents } = await supabase
     .from('documents')
     .select('*')
     .order('created_at', { ascending: false })
 
-  if (profile.role !== 'admin') {
-    query = query.eq('staff_name', profile.name)
+  // フォルダをツリー構造に変換
+  const buildFolderTree = (folders: any[], parentId: string | null = null): any[] => {
+    return folders
+      .filter(f => f.parent_id === parentId)
+      .map(folder => ({
+        ...folder,
+        children: buildFolderTree(folders, folder.id),
+        document_count: documents?.filter(d => d.folder_id === folder.id).length || 0,
+      }))
   }
 
-  const { data: documents } = await query
+  const folderTree = buildFolderTree(folders || [])
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">
-          {profile.role === 'admin' ? '全書類一覧' : 'あなたの書類'}
-        </h1>
-        <p className="text-muted-foreground">
-          {profile.role === 'admin'
-            ? 'アップロードされた全ての書類を管理できます'
-            : 'ダウンロード可能な書類が表示されます'}
-        </p>
-      </div>
-
-      <DocumentList documents={documents || []} isAdmin={profile.role === 'admin'} />
-    </div>
+    <FolderBrowser
+      folders={folderTree}
+      documents={documents || []}
+      userRoleLevel={roleLevel}
+      userId={user.id}
+      userName={profile.name}
+      isAdmin={isAdmin}
+    />
   )
 }

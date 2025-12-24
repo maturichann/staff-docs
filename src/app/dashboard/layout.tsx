@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { DashboardNav } from '@/components/dashboard-nav'
+import { ROLE_LEVELS } from '@/lib/types'
 
 export default async function DashboardLayout({
   children,
@@ -17,11 +18,13 @@ export default async function DashboardLayout({
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('*')
+    .select(`
+      *,
+      role:roles(*)
+    `)
     .eq('id', user.id)
     .single()
 
-  // プロファイルがない場合はエラー表示（リダイレクトループを防ぐ）
   if (!profile) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -38,9 +41,11 @@ export default async function DashboardLayout({
     )
   }
 
+  const roleLevel = profile.role?.level ?? ROLE_LEVELS.staff
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <DashboardNav profile={profile} />
+      <DashboardNav profile={profile} roleLevel={roleLevel} />
       <main className="container mx-auto px-4 py-8">
         {children}
       </main>

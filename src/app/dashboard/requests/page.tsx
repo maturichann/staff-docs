@@ -1,9 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { StaffManagement } from '@/components/staff-management'
 import { ROLE_LEVELS } from '@/lib/types'
+import { SubmissionRequestManager } from '@/components/submission-request-manager'
 
-export default async function StaffPage() {
+export default async function RequestsPage() {
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -23,35 +23,42 @@ export default async function StaffPage() {
 
   const roleLevel = profile?.role?.level ?? ROLE_LEVELS.staff
 
-  if (!profile || roleLevel < ROLE_LEVELS.mg) {
+  if (!profile || roleLevel < ROLE_LEVELS.admin) {
     redirect('/dashboard')
   }
 
-  // roles一覧を取得
-  const { data: roles } = await supabase
-    .from('roles')
-    .select('*')
-    .order('level', { ascending: false })
+  // 提出依頼一覧を取得
+  const { data: requests } = await supabase
+    .from('submission_requests')
+    .select(`
+      *,
+      staff:profiles!submission_requests_staff_id_fkey(id, name, email),
+      submissions:staff_submissions(*)
+    `)
+    .order('created_at', { ascending: false })
 
-  // staffList（role情報付き）を取得
+  // スタッフ一覧を取得
   const { data: staffList } = await supabase
     .from('profiles')
     .select(`
       *,
       role:roles(*)
     `)
-    .order('created_at', { ascending: false })
+    .order('name')
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">スタッフ管理</h1>
+        <h1 className="text-2xl font-bold">提出依頼管理</h1>
         <p className="text-muted-foreground">
-          スタッフの追加・編集・削除ができます
+          スタッフへの書類提出依頼を管理します
         </p>
       </div>
 
-      <StaffManagement staffList={staffList || []} roles={roles || []} />
+      <SubmissionRequestManager
+        requests={requests || []}
+        staffList={staffList || []}
+      />
     </div>
   )
 }

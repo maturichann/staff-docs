@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Profile } from '@/lib/types'
+import { Profile, Role, ROLE_LEVELS, RoleName } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -31,9 +31,10 @@ import { useRouter } from 'next/navigation'
 
 interface StaffManagementProps {
   staffList: Profile[]
+  roles: Role[]
 }
 
-export function StaffManagement({ staffList }: StaffManagementProps) {
+export function StaffManagement({ staffList, roles }: StaffManagementProps) {
   const [open, setOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [editingStaff, setEditingStaff] = useState<Profile | null>(null)
@@ -41,19 +42,23 @@ export function StaffManagement({ staffList }: StaffManagementProps) {
   const [staffCode, setStaffCode] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [role, setRole] = useState<'admin' | 'staff'>('staff')
+  const [selectedRoleId, setSelectedRoleId] = useState<number>(
+    roles.find(r => r.name === 'staff')?.id || 0
+  )
   const [loading, setLoading] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
 
+  const selectedRole = roles.find(r => r.id === selectedRoleId)
+
   const resetForm = () => {
     setName('')
     setStaffCode('')
     setEmail('')
     setPassword('')
-    setRole('staff')
+    setSelectedRoleId(roles.find(r => r.name === 'staff')?.id || 0)
     setError(null)
   }
 
@@ -62,9 +67,8 @@ export function StaffManagement({ staffList }: StaffManagementProps) {
     setLoading(true)
     setError(null)
 
-    const userEmail = role === 'staff'
-      ? `${staffCode}@staff.internal`
-      : email
+    const isStaff = selectedRole?.name === 'staff'
+    const userEmail = isStaff ? `${staffCode}@staff.internal` : email
 
     try {
       const res = await fetch('/api/admin/create-user', {
@@ -74,8 +78,8 @@ export function StaffManagement({ staffList }: StaffManagementProps) {
           name,
           email: userEmail,
           password,
-          role,
-          staffCode: role === 'staff' ? staffCode : undefined
+          role_id: selectedRoleId,
+          staffCode: isStaff ? staffCode : undefined
         }),
       })
 
@@ -98,7 +102,7 @@ export function StaffManagement({ staffList }: StaffManagementProps) {
   const handleEdit = (staff: Profile) => {
     setEditingStaff(staff)
     setName(staff.name)
-    setRole(staff.role as 'admin' | 'staff')
+    setSelectedRoleId(staff.role_id)
     setEditOpen(true)
   }
 
@@ -112,7 +116,7 @@ export function StaffManagement({ staffList }: StaffManagementProps) {
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({ name, role })
+        .update({ name, role_id: selectedRoleId })
         .eq('id', editingStaff.id)
 
       if (error) throw error
@@ -178,6 +182,19 @@ export function StaffManagement({ staffList }: StaffManagementProps) {
     return null
   }
 
+  const getRoleBadge = (role?: Role) => {
+    if (!role) return <Badge variant="outline">不明</Badge>
+
+    const level = role.level
+    if (level >= ROLE_LEVELS.admin) {
+      return <Badge variant="default">{role.label}</Badge>
+    }
+    if (level >= ROLE_LEVELS.mg) {
+      return <Badge variant="secondary">{role.label}</Badge>
+    }
+    return <Badge variant="outline">{role.label}</Badge>
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
@@ -199,27 +216,19 @@ export function StaffManagement({ staffList }: StaffManagementProps) {
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label>役割</Label>
-                  <div className="flex gap-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="role"
-                        value="staff"
-                        checked={role === 'staff'}
-                        onChange={() => setRole('staff')}
-                      />
-                      スタッフ
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="role"
-                        value="admin"
-                        checked={role === 'admin'}
-                        onChange={() => setRole('admin')}
-                      />
-                      管理者
-                    </label>
+                  <div className="flex flex-wrap gap-4">
+                    {roles.map((role) => (
+                      <label key={role.id} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="role"
+                          value={role.id}
+                          checked={selectedRoleId === role.id}
+                          onChange={() => setSelectedRoleId(role.id)}
+                        />
+                        {role.label}
+                      </label>
+                    ))}
                   </div>
                 </div>
 
@@ -237,7 +246,7 @@ export function StaffManagement({ staffList }: StaffManagementProps) {
                   </p>
                 </div>
 
-                {role === 'staff' ? (
+                {selectedRole?.name === 'staff' ? (
                   <div className="space-y-2">
                     <Label htmlFor="staffCode">スタッフコード</Label>
                     <Input
@@ -332,27 +341,19 @@ export function StaffManagement({ staffList }: StaffManagementProps) {
 
               <div className="space-y-2">
                 <Label>役割</Label>
-                <div className="flex gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="editRole"
-                      value="staff"
-                      checked={role === 'staff'}
-                      onChange={() => setRole('staff')}
-                    />
-                    スタッフ
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="editRole"
-                      value="admin"
-                      checked={role === 'admin'}
-                      onChange={() => setRole('admin')}
-                    />
-                    管理者
-                  </label>
+                <div className="flex flex-wrap gap-4">
+                  {roles.map((role) => (
+                    <label key={role.id} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="editRole"
+                        value={role.id}
+                        checked={selectedRoleId === role.id}
+                        onChange={() => setSelectedRoleId(role.id)}
+                      />
+                      {role.label}
+                    </label>
+                  ))}
                 </div>
               </div>
 
@@ -426,9 +427,7 @@ export function StaffManagement({ staffList }: StaffManagementProps) {
                       )}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={staff.role === 'admin' ? 'default' : 'secondary'}>
-                        {staff.role === 'admin' ? '管理者' : 'スタッフ'}
-                      </Badge>
+                      {getRoleBadge(staff.role)}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {formatDate(staff.created_at)}
