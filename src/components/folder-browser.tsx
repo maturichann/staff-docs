@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { Document, FolderTreeNode, ROLE_LEVELS, canViewDocument, filterFoldersByPermission } from '@/lib/types'
 import { FolderTree } from './folder-tree'
 import { DocumentListV2 } from './document-list-v2'
@@ -26,6 +26,12 @@ interface FolderBrowserProps {
   isAdmin: boolean
 }
 
+// 検索用に小文字化したドキュメント
+interface SearchableDocument extends Document {
+  _fileNameLower: string
+  _staffNameLower: string
+}
+
 export function FolderBrowser({
   folders,
   documents,
@@ -43,39 +49,51 @@ export function FolderBrowser({
     [folders, userRoleLevel]
   )
 
-  // 選択中のフォルダを取得
-  const findFolder = (folders: FolderTreeNode[], id: string): FolderTreeNode | null => {
-    for (const folder of folders) {
-      if (folder.id === id) return folder
-      const found = findFolder(folder.children, id)
-      if (found) return found
-    }
-    return null
-  }
-
-  const selectedFolder = selectedFolderId ? findFolder(filteredFolders, selectedFolderId) : null
-
-  // パンくずリストを構築
-  const buildBreadcrumbs = (
-    folders: FolderTreeNode[],
-    targetId: string,
-    path: FolderTreeNode[] = []
-  ): FolderTreeNode[] | null => {
-    for (const folder of folders) {
-      if (folder.id === targetId) {
-        return [...path, folder]
+  // id -> folder マップを事前構築（O(1)検索）
+  const folderMap = useMemo(() => {
+    const map = new Map<string, FolderTreeNode>()
+    const buildMap = (folders: FolderTreeNode[]) => {
+      for (const folder of folders) {
+        map.set(folder.id, folder)
+        buildMap(folder.children)
       }
-      const found = buildBreadcrumbs(folder.children, targetId, [...path, folder])
-      if (found) return found
     }
-    return null
-  }
+    buildMap(filteredFolders)
+    return map
+  }, [filteredFolders])
 
-  const breadcrumbs = selectedFolderId ? buildBreadcrumbs(filteredFolders, selectedFolderId) : null
+  // id -> 親チェーン マップを事前構築（パンくず用）
+  const parentChainMap = useMemo(() => {
+    const map = new Map<string, FolderTreeNode[]>()
+    const buildChain = (folders: FolderTreeNode[], chain: FolderTreeNode[] = []) => {
+      for (const folder of folders) {
+        const newChain = [...chain, folder]
+        map.set(folder.id, newChain)
+        buildChain(folder.children, newChain)
+      }
+    }
+    buildChain(filteredFolders)
+    return map
+  }, [filteredFolders])
+
+  // O(1)でフォルダ取得
+  const selectedFolder = selectedFolderId ? folderMap.get(selectedFolderId) ?? null : null
+
+  // O(1)でパンくず取得
+  const breadcrumbs = selectedFolderId ? parentChainMap.get(selectedFolderId) ?? null : null
+
+  // 検索用に前処理したドキュメント
+  const searchableDocuments = useMemo<SearchableDocument[]>(() => {
+    return documents.map(doc => ({
+      ...doc,
+      _fileNameLower: doc.file_name.toLowerCase(),
+      _staffNameLower: doc.staff_name.toLowerCase(),
+    }))
+  }, [documents])
 
   // フィルタされたドキュメント
   const filteredDocuments = useMemo(() => {
-    let docs = documents
+    let docs = searchableDocuments
 
     // 閲覧権限フィルタ
     docs = docs.filter(doc => canViewDocument(userRoleLevel, userId, doc))
@@ -90,18 +108,23 @@ export function FolderBrowser({
       docs = docs.filter(doc => doc.staff_name === userName || doc.staff_id === userId)
     }
 
-    // 検索フィルタ
+    // 検索フィルタ（前処理済みの小文字を使用）
     if (search) {
       const searchLower = search.toLowerCase()
       docs = docs.filter(
         doc =>
-          doc.file_name.toLowerCase().includes(searchLower) ||
-          doc.staff_name.toLowerCase().includes(searchLower)
+          doc._fileNameLower.includes(searchLower) ||
+          doc._staffNameLower.includes(searchLower)
       )
     }
 
     return docs
-  }, [documents, selectedFolderId, search, userRoleLevel, userId, userName])
+  }, [searchableDocuments, selectedFolderId, search, userRoleLevel, userId, userName])
+
+  // フォルダ選択ハンドラをメモ化
+  const handleSelectFolder = useCallback((folderId: string | null) => {
+    setSelectedFolderId(folderId)
+  }, [])
 
   return (
     <div className="flex gap-6">
@@ -118,7 +141,7 @@ export function FolderBrowser({
             <FolderTree
               folders={filteredFolders}
               selectedFolderId={selectedFolderId}
-              onSelectFolder={setSelectedFolderId}
+              onSelectFolder={handleSelectFolder}
               userRoleLevel={userRoleLevel}
               isAdmin={isAdmin}
             />
@@ -145,7 +168,7 @@ export function FolderBrowser({
         {/* パンくずリスト */}
         <div className="flex items-center gap-2 text-sm">
           <button
-            onClick={() => setSelectedFolderId(null)}
+            onClick={() => handleSelectFolder(null)}
             className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
           >
             <Home className="h-4 w-4" />
@@ -155,7 +178,7 @@ export function FolderBrowser({
             <span key={folder.id} className="flex items-center gap-2">
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
               <button
-                onClick={() => setSelectedFolderId(folder.id)}
+                onClick={() => handleSelectFolder(folder.id)}
                 className={
                   index === breadcrumbs.length - 1
                     ? 'font-medium'

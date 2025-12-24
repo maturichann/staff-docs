@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback, useRef, memo } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { Document, FolderTreeNode, ROLE_LEVELS } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -232,7 +233,16 @@ export function DocumentListV2({
     return result
   }
 
-  const flatFolders = flattenFolders(folders)
+  const flatFolders = useMemo(() => flattenFolders(folders), [folders])
+
+  // バーチャルスクロール用
+  const parentRef = useRef<HTMLDivElement>(null)
+  const virtualizer = useVirtualizer({
+    count: documents.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 56, // 行の高さ
+    overscan: 5,
+  })
 
   if (documents.length === 0) {
     return (

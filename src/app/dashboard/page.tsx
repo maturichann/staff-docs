@@ -28,10 +28,10 @@ export default async function DashboardPage() {
   const roleLevel = profile.role?.level ?? ROLE_LEVELS.staff
   const isAdmin = roleLevel >= ROLE_LEVELS.admin
 
-  // フォルダ一覧を取得
+  // フォルダ一覧を取得（必要カラムのみ）
   const { data: folders } = await supabase
     .from('folders')
-    .select('*')
+    .select('id, name, parent_id, owner_staff_id, min_role_level, is_system, system_type')
     .order('name')
 
   // ドキュメント一覧を取得（フォルダ情報も含める）
