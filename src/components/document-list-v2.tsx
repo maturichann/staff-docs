@@ -142,11 +142,28 @@ export function DocumentListV2({
     }
   }
 
+  // フォルダIDからフォルダを検索（ネスト対応）
+  const findFolderById = useCallback((folders: FolderTreeNode[], id: string): FolderTreeNode | null => {
+    for (const folder of folders) {
+      if (folder.id === id) return folder
+      const found = findFolderById(folder.children, id)
+      if (found) return found
+    }
+    return null
+  }, [])
+
   const handleMoveToFolder = async (doc: Document, folderId: string | null) => {
     try {
+      // 移動先フォルダの権限レベルを継承
+      const targetFolder = folderId ? findFolderById(folders, folderId) : null
+      const minRoleLevel = targetFolder?.min_role_level ?? ROLE_LEVELS.staff
+
       const { error } = await supabase
         .from('documents')
-        .update({ folder_id: folderId })
+        .update({
+          folder_id: folderId,
+          min_role_level: minRoleLevel
+        })
         .eq('id', doc.id)
 
       if (error) throw error
