@@ -24,7 +24,7 @@ export async function POST(request: Request) {
 
   const roleLevel = profile?.role?.level ?? 0
 
-  if (!profile || roleLevel < ROLE_LEVELS.mg) {
+  if (!profile || roleLevel < ROLE_LEVELS.admin) {
     return NextResponse.json({ error: '管理者権限が必要です' }, { status: 403 })
   }
 
