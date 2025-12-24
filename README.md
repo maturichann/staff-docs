@@ -1,36 +1,202 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Staff Docs
 
-## Getting Started
+スタッフ向け書類管理システム - Supabase + Next.js
 
-First, run the development server:
+## 機能一覧
+
+### 認証・ユーザー管理
+
+| 機能 | 説明 |
+|------|------|
+| ログイン/ログアウト | メールアドレス・パスワード認証 |
+| ロールベース権限 | Admin(100) / MG(50) / Staff(10) の3段階 |
+| ユーザー作成 | 管理者がスタッフアカウントを作成 |
+| ユーザー削除 | 管理者がスタッフアカウントを削除 |
+| ロール変更 | スタッフの権限レベルを変更 |
+
+### フォルダ管理
+
+| 機能 | 説明 |
+|------|------|
+| フォルダ作成 | 階層構造でフォルダを作成 |
+| フォルダ名変更 | フォルダ名を編集 |
+| フォルダ削除 | フォルダと中身を削除 |
+| フォルダツリー | サイドバーで階層表示 |
+| パンくずナビ | 現在位置を表示 |
+| フォルダ権限設定 | フォルダごとに閲覧可能なロールを設定 |
+| 「その他」フォルダ | スタッフ名不一致の書類を自動振り分け |
+
+### 書類管理
+
+| 機能 | 説明 |
+|------|------|
+| 書類アップロード | ドラッグ&ドロップ対応 |
+| フォルダごとアップロード | フォルダをまるごとドロップ可能 |
+| 書類ダウンロード | 個別にダウンロード |
+| 書類削除 | 書類を削除 |
+| 書類検索 | ファイル名で検索 |
+| スタッフ名自動紐付け | ファイル名先頭のスタッフ名で自動振り分け |
+| スタッフ名変更 | 書類のスタッフ紐付けを変更 |
+| フォルダ移動 | 書類を別フォルダに移動 |
+| 権限レベル変更 | 書類ごとに閲覧可能なロールを設定 |
+
+### ロック機能（本人非表示）
+
+| 機能 | 説明 |
+|------|------|
+| ロック設定 | 書類に「本人非表示」マークを付与 |
+| ロック解除 | マークを解除 |
+| 本人非表示 | ロックされた書類は本人には見えない |
+| 管理者閲覧 | Admin/MGはロック書類も閲覧可能 |
+
+### 提出依頼システム
+
+| 機能 | 説明 |
+|------|------|
+| 提出依頼作成 | 「年金手帳」「免許証」等の依頼を作成 |
+| 対象者指定 | 全員 or 特定スタッフを選択 |
+| 期限設定 | 提出期限を設定 |
+| 依頼削除 | 依頼を削除 |
+| ステータス表示 | 未提出/確認待ち/承認済み |
+
+### スタッフ提出機能
+
+| 機能 | 説明 |
+|------|------|
+| 依頼一覧表示 | スタッフが自分宛の依頼を確認 |
+| 書類アップロード | 依頼に対してファイルを提出 |
+| 再提出 | 差し戻し後に再アップロード |
+| 承認/差し戻し | 管理者が提出物をレビュー |
+| レビューコメント | 差し戻し理由を記載 |
+| 提出物ダウンロード | 管理者が提出物をダウンロード |
+
+### ナビゲーション
+
+| 機能 | 説明 |
+|------|------|
+| ヘッダーナビ | PCでは横並びメニュー |
+| ドロップダウン | モバイルではハンバーガーメニュー |
+| アバター表示 | ユーザー名のイニシャル表示 |
+| ロールバッジ | 現在のロールを表示 |
+
+---
+
+## 権限マトリクス
+
+| 機能 | Admin | MG | Staff |
+|------|:-----:|:--:|:-----:|
+| 書類一覧閲覧 | 全て | 権限内 | 自分のみ |
+| 書類アップロード | ○ | - | - |
+| 書類削除 | ○ | - | - |
+| ロック設定 | ○ | ○ | - |
+| フォルダ作成/編集 | ○ | ○ | - |
+| スタッフ管理 | ○ | ○ | - |
+| ユーザー作成/削除 | ○ | - | - |
+| 提出依頼作成 | ○ | - | - |
+| 提出物レビュー | ○ | - | - |
+| 書類提出 | - | - | ○ |
+
+---
+
+## 技術スタック
+
+- **フロントエンド**: Next.js 16 (App Router), React 19, TypeScript
+- **スタイリング**: Tailwind CSS 4, Radix UI
+- **バックエンド**: Supabase (PostgreSQL, Auth, Storage)
+- **認証**: Supabase Auth (Email/Password)
+- **ストレージ**: Supabase Storage
+- **アイコン**: Lucide React
+
+---
+
+## セットアップ
+
+### 1. 依存関係のインストール
+
+```bash
+npm install
+```
+
+### 2. 環境変数の設定
+
+`.env.local` を作成:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+```
+
+### 3. データベースの初期化
+
+Supabase SQLエディタで `supabase-schema-v2.sql` を実行
+
+### 4. 開発サーバーの起動
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+http://localhost:3000 でアクセス
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## ディレクトリ構成
 
-## Learn More
+```
+src/
+├── app/
+│   ├── api/
+│   │   └── admin/
+│   │       ├── create-user/     # ユーザー作成API
+│   │       └── delete-user/     # ユーザー削除API
+│   ├── dashboard/
+│   │   ├── page.tsx             # 書類一覧（メイン）
+│   │   ├── upload/              # アップロードページ
+│   │   ├── staff/               # スタッフ管理
+│   │   ├── requests/            # 提出依頼管理
+│   │   └── submissions/         # 提出書類（スタッフ用）
+│   └── login/                   # ログインページ
+├── components/
+│   ├── ui/                      # 共通UIコンポーネント
+│   ├── folder-tree.tsx          # フォルダツリー
+│   ├── folder-browser.tsx       # フォルダブラウザ
+│   ├── document-list-v2.tsx     # 書類リスト
+│   ├── file-upload-v2.tsx       # ファイルアップロード
+│   ├── staff-management.tsx     # スタッフ管理
+│   ├── submission-request-manager.tsx  # 提出依頼管理
+│   ├── staff-submissions.tsx    # スタッフ提出
+│   └── dashboard-nav.tsx        # ナビゲーション
+└── lib/
+    ├── supabase/                # Supabaseクライアント
+    ├── types.ts                 # 型定義
+    └── utils.ts                 # ユーティリティ
+```
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## データベース構成
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### テーブル
 
-## Deploy on Vercel
+| テーブル | 説明 |
+|----------|------|
+| `profiles` | ユーザープロファイル |
+| `roles` | ロール定義 |
+| `folders` | フォルダ |
+| `documents` | 書類 |
+| `submission_requests` | 提出依頼 |
+| `staff_submissions` | スタッフ提出物 |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### ストレージバケット
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| バケット | 説明 |
+|----------|------|
+| `documents` | 管理者アップロード書類 |
+| `submissions` | スタッフ提出書類 |
+
+---
+
+## ライセンス
+
+Private
