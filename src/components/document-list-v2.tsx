@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback, useRef, memo } from 'react'
-import { useVirtualizer } from '@tanstack/react-virtual'
+import { useState, useMemo, useCallback } from 'react'
 import { Document, FolderTreeNode, ROLE_LEVELS } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -252,15 +251,6 @@ export function DocumentListV2({
 
   const flatFolders = useMemo(() => flattenFolders(folders), [folders])
 
-  // バーチャルスクロール用
-  const parentRef = useRef<HTMLDivElement>(null)
-  const virtualizer = useVirtualizer({
-    count: documents.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 56, // 行の高さ
-    overscan: 5,
-  })
-
   if (documents.length === 0) {
     return (
       <Card>
@@ -423,61 +413,27 @@ export function DocumentListV2({
     </>
   )
 
-  const ROW_HEIGHT = 56
-
   return (
     <>
       <Card>
-        {/* ヘッダー（固定） */}
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[35%]">ファイル名</TableHead>
-              <TableHead className="w-[15%]">スタッフ</TableHead>
-              <TableHead className="w-[10%]">サイズ</TableHead>
-              <TableHead className="w-[15%]">アップロード日</TableHead>
-              <TableHead className="w-[25%] text-right">操作</TableHead>
+              <TableHead>ファイル名</TableHead>
+              <TableHead>スタッフ</TableHead>
+              <TableHead>サイズ</TableHead>
+              <TableHead>アップロード日</TableHead>
+              <TableHead className="text-right">操作</TableHead>
             </TableRow>
           </TableHeader>
+          <TableBody>
+            {documents.map((doc) => (
+              <TableRow key={doc.id}>
+                {renderRow(doc)}
+              </TableRow>
+            ))}
+          </TableBody>
         </Table>
-
-        {/* バーチャルスクロール領域 */}
-        <div
-          ref={parentRef}
-          className="overflow-auto"
-          style={{ maxHeight: 'calc(100vh - 300px)', minHeight: '400px' }}
-        >
-          <div
-            style={{
-              height: `${virtualizer.getTotalSize()}px`,
-              width: '100%',
-              position: 'relative',
-            }}
-          >
-            <Table>
-              <TableBody>
-                {virtualizer.getVirtualItems().map((virtualRow) => {
-                  const doc = documents[virtualRow.index]
-                  return (
-                    <TableRow
-                      key={doc.id}
-                      style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        width: '100%',
-                        height: `${ROW_HEIGHT}px`,
-                        transform: `translateY(${virtualRow.start}px)`,
-                      }}
-                    >
-                      {renderRow(doc)}
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
       </Card>
 
       {/* スタッフ名編集ダイアログ */}
