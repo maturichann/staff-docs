@@ -170,20 +170,33 @@ export function canViewDocument(
 // フォルダの閲覧権限チェック
 export function canViewFolder(
   userRoleLevel: number,
+  userId: string,
   folder: Folder | FolderTreeNode
 ): boolean {
-  return userRoleLevel >= folder.min_role_level
+  // 管理者・MGは全フォルダ見える
+  if (userRoleLevel >= ROLE_LEVELS.mg) {
+    return userRoleLevel >= folder.min_role_level
+  }
+
+  // スタッフの場合：
+  // 1. min_role_level をクリア
+  // 2. owner_staff_id がない OR 自分が owner
+  if (userRoleLevel < folder.min_role_level) return false
+  if (folder.owner_staff_id && folder.owner_staff_id !== userId) return false
+
+  return true
 }
 
 // フォルダツリーを権限でフィルタ
 export function filterFoldersByPermission(
   folders: FolderTreeNode[],
-  userRoleLevel: number
+  userRoleLevel: number,
+  userId: string
 ): FolderTreeNode[] {
   return folders
-    .filter(folder => canViewFolder(userRoleLevel, folder))
+    .filter(folder => canViewFolder(userRoleLevel, userId, folder))
     .map(folder => ({
       ...folder,
-      children: filterFoldersByPermission(folder.children, userRoleLevel)
+      children: filterFoldersByPermission(folder.children, userRoleLevel, userId)
     }))
 }

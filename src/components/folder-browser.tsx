@@ -45,8 +45,8 @@ export function FolderBrowser({
 
   // 権限でフィルタしたフォルダ
   const filteredFolders = useMemo(
-    () => filterFoldersByPermission(folders, userRoleLevel),
-    [folders, userRoleLevel]
+    () => filterFoldersByPermission(folders, userRoleLevel, userId),
+    [folders, userRoleLevel, userId]
   )
 
   // id -> folder マップを事前構築（O(1)検索）
