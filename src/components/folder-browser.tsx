@@ -17,6 +17,11 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 
+interface StaffInfo {
+  id: string
+  name: string
+}
+
 interface FolderBrowserProps {
   folders: FolderTreeNode[]
   documents: Document[]
@@ -24,6 +29,7 @@ interface FolderBrowserProps {
   userId: string
   userName: string
   isAdmin: boolean
+  staffList: StaffInfo[]
 }
 
 // 検索用に小文字化したドキュメント
@@ -39,6 +45,7 @@ export function FolderBrowser({
   userId,
   userName,
   isAdmin,
+  staffList,
 }: FolderBrowserProps) {
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -144,6 +151,7 @@ export function FolderBrowser({
               onSelectFolder={handleSelectFolder}
               userRoleLevel={userRoleLevel}
               isAdmin={isAdmin}
+              staffList={staffList}
             />
           </CardContent>
         </Card>

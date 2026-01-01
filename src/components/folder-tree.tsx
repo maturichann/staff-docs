@@ -45,12 +45,18 @@ import {
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 
+interface StaffInfo {
+  id: string
+  name: string
+}
+
 interface FolderTreeProps {
   folders: FolderTreeNode[]
   selectedFolderId: string | null
   onSelectFolder: (folderId: string | null) => void
   userRoleLevel: number
   isAdmin: boolean
+  staffList: StaffInfo[]
 }
 
 export function FolderTree({
@@ -59,6 +65,7 @@ export function FolderTree({
   onSelectFolder,
   userRoleLevel,
   isAdmin,
+  staffList,
 }: FolderTreeProps) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
   const [newFolderDialog, setNewFolderDialog] = useState<{ open: boolean; parentId: string | null }>({
@@ -67,12 +74,14 @@ export function FolderTree({
   })
   const [newFolderName, setNewFolderName] = useState('')
   const [newFolderRoleLevel, setNewFolderRoleLevel] = useState<number>(ROLE_LEVELS.staff)
+  const [newFolderOwner, setNewFolderOwner] = useState<string>('')
   const [editDialog, setEditDialog] = useState<{ open: boolean; folder: Folder | null }>({
     open: false,
     folder: null,
   })
   const [editName, setEditName] = useState('')
   const [editRoleLevel, setEditRoleLevel] = useState<number>(ROLE_LEVELS.staff)
+  const [editOwner, setEditOwner] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
@@ -98,6 +107,7 @@ export function FolderTree({
         name: newFolderName.trim(),
         parent_id: newFolderDialog.parentId,
         min_role_level: newFolderRoleLevel,
+        owner_staff_id: newFolderOwner || null,
       })
 
       if (error) throw error
@@ -105,6 +115,7 @@ export function FolderTree({
       setNewFolderDialog({ open: false, parentId: null })
       setNewFolderName('')
       setNewFolderRoleLevel(ROLE_LEVELS.staff)
+      setNewFolderOwner('')
       router.refresh()
     } catch (error) {
       console.error('Create folder error:', error)
@@ -124,6 +135,7 @@ export function FolderTree({
         .update({
           name: editName.trim(),
           min_role_level: editRoleLevel,
+          owner_staff_id: editOwner || null,
         })
         .eq('id', editDialog.folder.id)
 
@@ -132,6 +144,7 @@ export function FolderTree({
       setEditDialog({ open: false, folder: null })
       setEditName('')
       setEditRoleLevel(ROLE_LEVELS.staff)
+      setEditOwner('')
       router.refresh()
     } catch (error) {
       console.error('Rename folder error:', error)
@@ -245,6 +258,7 @@ export function FolderTree({
                     setEditDialog({ open: true, folder })
                     setEditName(folder.name)
                     setEditRoleLevel(folder.min_role_level)
+                    setEditOwner(folder.owner_staff_id || '')
                   }}
                 >
                   <Pencil className="h-4 w-4 mr-2" />
@@ -311,6 +325,7 @@ export function FolderTree({
           if (!open) {
             setNewFolderName('')
             setNewFolderRoleLevel(ROLE_LEVELS.staff)
+            setNewFolderOwner('')
           }
         }}
       >
@@ -346,6 +361,28 @@ export function FolderTree({
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label>オーナー（個人フォルダ用）</Label>
+              <Select
+                value={newFolderOwner}
+                onValueChange={setNewFolderOwner}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="なし（共有フォルダ）" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">なし（共有フォルダ）</SelectItem>
+                  {staffList.map((staff) => (
+                    <SelectItem key={staff.id} value={staff.id}>
+                      {staff.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                オーナーを設定すると、そのスタッフと管理者のみ表示されます
+              </p>
+            </div>
           </div>
           <DialogFooter>
             <Button
@@ -369,6 +406,7 @@ export function FolderTree({
           if (!open) {
             setEditName('')
             setEditRoleLevel(ROLE_LEVELS.staff)
+            setEditOwner('')
           }
         }}
       >
@@ -403,6 +441,28 @@ export function FolderTree({
                   <SelectItem value={String(ROLE_LEVELS.admin)}>管理者のみ</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>オーナー（個人フォルダ用）</Label>
+              <Select
+                value={editOwner}
+                onValueChange={setEditOwner}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="なし（共有フォルダ）" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">なし（共有フォルダ）</SelectItem>
+                  {staffList.map((staff) => (
+                    <SelectItem key={staff.id} value={staff.id}>
+                      {staff.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                オーナーを設定すると、そのスタッフと管理者のみ表示されます
+              </p>
             </div>
           </div>
           <DialogFooter>

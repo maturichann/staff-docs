@@ -43,6 +43,12 @@ export default async function DashboardPage() {
     `)
     .order('created_at', { ascending: false })
 
+  // スタッフ一覧を取得（フォルダオーナー選択用）
+  const { data: staffList } = await supabase
+    .from('profiles')
+    .select('id, name')
+    .order('name')
+
   // フォルダをツリー構造に変換
   const buildFolderTree = (folders: any[], parentId: string | null = null): any[] => {
     return folders
@@ -64,6 +70,7 @@ export default async function DashboardPage() {
       userId={user.id}
       userName={profile.name}
       isAdmin={isAdmin}
+      staffList={staffList || []}
     />
   )
 }
