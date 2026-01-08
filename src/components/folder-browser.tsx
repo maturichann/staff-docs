@@ -9,11 +9,19 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet'
+import {
   Search,
   FolderOpen,
   ChevronRight,
   Home,
   Upload,
+  Menu,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -129,14 +137,40 @@ export function FolderBrowser({
   }, [searchableDocuments, selectedFolderId, search, userRoleLevel, userId, userName])
 
   // フォルダ選択ハンドラをメモ化
+  const [sheetOpen, setSheetOpen] = useState(false)
   const handleSelectFolder = useCallback((folderId: string | null) => {
     setSelectedFolderId(folderId)
+    setSheetOpen(false) // モバイルでフォルダ選択時にシートを閉じる
   }, [])
 
+  // サイドバーの中身（PC/モバイル共通）
+  const sidebarContent = (
+    <>
+      <FolderTree
+        folders={filteredFolders}
+        selectedFolderId={selectedFolderId}
+        onSelectFolder={handleSelectFolder}
+        userRoleLevel={userRoleLevel}
+        isAdmin={isAdmin}
+        staffList={staffList}
+      />
+      {isAdmin && (
+        <div className="mt-4 pt-4 border-t">
+          <Link href="/dashboard/upload">
+            <Button variant="outline" size="sm" className="w-full justify-start">
+              <Upload className="h-4 w-4 mr-2" />
+              アップロード
+            </Button>
+          </Link>
+        </div>
+      )}
+    </>
+  )
+
   return (
-    <div className="flex gap-6">
-      {/* サイドバー */}
-      <div className="w-64 shrink-0">
+    <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
+      {/* PC用サイドバー */}
+      <div className="hidden lg:block w-64 shrink-0">
         <Card>
           <CardHeader className="py-4">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -145,52 +179,61 @@ export function FolderBrowser({
             </CardTitle>
           </CardHeader>
           <CardContent className="py-0 pb-4">
-            <FolderTree
-              folders={filteredFolders}
-              selectedFolderId={selectedFolderId}
-              onSelectFolder={handleSelectFolder}
-              userRoleLevel={userRoleLevel}
-              isAdmin={isAdmin}
-              staffList={staffList}
-            />
+            {sidebarContent}
           </CardContent>
         </Card>
-
-        {/* クイックアクション */}
-        {isAdmin && (
-          <Card className="mt-4">
-            <CardContent className="py-4 space-y-2">
-              <Link href="/dashboard/upload">
-                <Button variant="outline" size="sm" className="w-full justify-start">
-                  <Upload className="h-4 w-4 mr-2" />
-                  アップロード
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-        )}
       </div>
 
       {/* メインエリア */}
       <div className="flex-1 min-w-0 space-y-4">
+        {/* モバイル用ヘッダー */}
+        <div className="flex items-center gap-2 lg:hidden">
+          <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Menu className="h-4 w-4 mr-2" />
+                フォルダ
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-72">
+              <SheetHeader>
+                <SheetTitle className="flex items-center gap-2">
+                  <FolderOpen className="h-4 w-4" />
+                  フォルダ
+                </SheetTitle>
+              </SheetHeader>
+              <div className="mt-4">
+                {sidebarContent}
+              </div>
+            </SheetContent>
+          </Sheet>
+          {isAdmin && (
+            <Link href="/dashboard/upload">
+              <Button variant="outline" size="sm">
+                <Upload className="h-4 w-4" />
+              </Button>
+            </Link>
+          )}
+        </div>
+
         {/* パンくずリスト */}
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex items-center gap-2 text-sm overflow-x-auto pb-1">
           <button
             onClick={() => handleSelectFolder(null)}
-            className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
+            className="flex items-center gap-1 text-muted-foreground hover:text-foreground shrink-0"
           >
             <Home className="h-4 w-4" />
-            すべて
+            <span className="hidden sm:inline">すべて</span>
           </button>
           {breadcrumbs?.map((folder, index) => (
-            <span key={folder.id} className="flex items-center gap-2">
+            <span key={folder.id} className="flex items-center gap-2 shrink-0">
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
               <button
                 onClick={() => handleSelectFolder(folder.id)}
                 className={
                   index === breadcrumbs.length - 1
-                    ? 'font-medium'
-                    : 'text-muted-foreground hover:text-foreground'
+                    ? 'font-medium truncate max-w-[120px] sm:max-w-none'
+                    : 'text-muted-foreground hover:text-foreground truncate max-w-[120px] sm:max-w-none'
                 }
               >
                 {folder.name}
@@ -200,9 +243,9 @@ export function FolderBrowser({
         </div>
 
         {/* ヘッダー */}
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold">
+            <h1 className="text-xl sm:text-2xl font-bold truncate">
               {selectedFolder?.name || 'すべての書類'}
             </h1>
             <p className="text-muted-foreground text-sm">
@@ -215,7 +258,7 @@ export function FolderBrowser({
             </p>
           </div>
 
-          <div className="relative w-64">
+          <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="検索..."

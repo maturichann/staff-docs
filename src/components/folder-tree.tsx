@@ -364,14 +364,14 @@ export function FolderTree({
             <div className="space-y-2">
               <Label>オーナー（個人フォルダ用）</Label>
               <Select
-                value={newFolderOwner}
-                onValueChange={setNewFolderOwner}
+                value={newFolderOwner || '__none__'}
+                onValueChange={(v) => setNewFolderOwner(v === '__none__' ? '' : v)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="なし（共有フォルダ）" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">なし（共有フォルダ）</SelectItem>
+                  <SelectItem value="__none__">なし（共有フォルダ）</SelectItem>
                   {staffList.map((staff) => (
                     <SelectItem key={staff.id} value={staff.id}>
                       {staff.name}
@@ -445,14 +445,14 @@ export function FolderTree({
             <div className="space-y-2">
               <Label>オーナー（個人フォルダ用）</Label>
               <Select
-                value={editOwner}
-                onValueChange={setEditOwner}
+                value={editOwner || '__none__'}
+                onValueChange={(v) => setEditOwner(v === '__none__' ? '' : v)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="なし（共有フォルダ）" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">なし（共有フォルダ）</SelectItem>
+                  <SelectItem value="__none__">なし（共有フォルダ）</SelectItem>
                   {staffList.map((staff) => (
                     <SelectItem key={staff.id} value={staff.id}>
                       {staff.name}
